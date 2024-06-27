@@ -745,21 +745,15 @@ class BasePlot(PlotWidget, PyDMPrimitiveWidget):
 
         self._curves.append(plot_data_item)
 
-        if y_axis_name is None:
-            if utilities.is_qt_designer():
-                # If we are just in designer, add an axis that will not conflict with the pyqtgraph default
-                self.addAxis(plot_data_item=plot_data_item, name="Axis 1", orientation="left")
-            # If not in designer and the user did not name the axis, use the pyqtgraph default one named left
-            elif "left" not in self.plotItem.axes:
-                self.addAxis(plot_data_item=plot_data_item, name="left", orientation="left")
-            else:
-                self.plotItem.linkDataToAxis(plot_data_item, "left")
-        elif y_axis_name in self.plotItem.axes:
+        if y_axis_name in self.plotItem.axes:
             # If the user has chosen an axis that already exists for this curve, simply link the data to that axis
             self.plotItem.linkDataToAxis(plot_data_item, y_axis_name)
+        elif y_axis_name is None and "left" in self.plotItem.axes:
+            self.plotItem.linkDataToAxis(plot_data_item, "left")
         else:
             # Otherwise we create a brand new axis for this data
-            self.addAxis(plot_data_item, y_axis_name, "left")
+            self.addAxis(plot_data_item, y_axis_name)
+
         self.redraw_timer.start()
         # Connect channels
         for chan in plot_data_item.channels():
@@ -769,8 +763,8 @@ class BasePlot(PlotWidget, PyDMPrimitiveWidget):
     def addAxis(
         self,
         plot_data_item: BasePlotCurveItem,
-        name: str,
-        orientation: str,
+        name: str = None,
+        orientation: str = "left",
         label: Optional[str] = None,
         min_range: Optional[float] = -1.0,
         max_range: Optional[float] = 1.0,
@@ -807,7 +801,15 @@ class BasePlot(PlotWidget, PyDMPrimitiveWidget):
             Raised by PyQtGraph if the orientation is not in 'left' or 'right'
         """
 
+        if name is None and utilities.is_qt_designer():
+            # If we are just in designer, add an axis that will not conflict with the pyqtgraph default
+            name = "Axis 1"
+        elif name is None and "left" not in self.plotItem.axes:
+            # If not in designer and the user did not name the axis, use the pyqtgraph default one named left
+            name = "left"
+
         if name in self.plotItem.axes:
+            self.plotItem.linkDataToAxis(plot_data_item, name)
             return
 
         axis = BasePlotAxisItem(
